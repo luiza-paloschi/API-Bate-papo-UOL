@@ -44,6 +44,38 @@ server.post("/participants", async (req, res) => {
     }
 })
 
+server.get("/participants", async (_, res) => {
+    try {
+        const participants = await db.collection("participants").find().toArray()
+        return res.send(participants)
+    } catch (error) {
+        console.log(error)
+        res.status(500).send("Deu algo errado no servidor")
+    }
+})
+
+server.post("/messages", async (req, res) => {
+    const { to, text, type } = req.body
+    const {user} = req.headers
+
+    try {
+  
+      const userExists = await db.collection("participants").findOne({ name: user })
+  
+      if (!userExists) return res.status(422).send("Esse usuário não se encontra na lista de participantes")
+  
+      await db.collection("participants").insertOne({name: user.name, lastStatus: Date.now()})
+      await db.collection("messages").insertOne(
+      {from: user, to, text, type, time: dayjs().format('HH:mm:ss')})
+  
+      res.sendStatus(201)
+  
+    } catch (err) {
+      console.log(err)
+      res.status(500).send("Deu algo errado no servidor")
+    } 
+})
+
 server.listen(5000, () => {
   console.log('Servidor funfou de boas!!!')
 })
