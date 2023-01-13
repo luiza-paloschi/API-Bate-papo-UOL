@@ -5,6 +5,7 @@ import dotenv from 'dotenv'
 import dayjs from 'dayjs'
 
 dotenv.config()
+// db.participants.deleteMany({})
 
 const mongoClient = new MongoClient(process.env.DATABASE_URL)
 let db;
@@ -23,9 +24,11 @@ const server = express()
 server.use(express.json())
 server.use(cors())
 
+
+
 server.post("/participants", async (req, res) => {
     const user = req.body
-  
+    console.log(user)
     try {
   
       const userExists = await db.collection("participants").findOne({ name: user.name })
@@ -46,7 +49,7 @@ server.post("/participants", async (req, res) => {
 
 server.get("/participants", async (_, res) => {
     try {
-        const participants = await db.collection("participants").find().toArray()
+        const participants = await db.collection("participants").find({}).toArray()
         return res.send(participants)
     } catch (error) {
         console.log(error)
@@ -64,11 +67,50 @@ server.post("/messages", async (req, res) => {
   
       if (!userExists) return res.status(422).send("Esse usuário não se encontra na lista de participantes")
   
-      await db.collection("participants").insertOne({name: user.name, lastStatus: Date.now()})
       await db.collection("messages").insertOne(
       {from: user, to, text, type, time: dayjs().format('HH:mm:ss')})
   
       res.sendStatus(201)
+  
+    } catch (err) {
+      console.log(err)
+      res.status(500).send("Deu algo errado no servidor")
+    } 
+})
+
+server.get("/messages", async (req, res) => {
+    const limit = parseInt(req.query.limit);
+    const {user} = req.headers
+
+    try {
+        const messages = await db.collection("messages").find().toArray()
+        const filtered = messages.filter((message) => message.type === "message" || message.type === "status" ||
+        (message.type === "private_message" && (message.from === user || message.to === user)))
+        if (!limit) return res.send(filtered)
+        return res.send(filtered.slice(-limit))
+    } catch (error) {
+        console.log(error)
+        res.status(500).send("Deu algo errado no servidor")
+    }
+})
+
+server.post("/status", async (req, res) => {
+    const {user} = req.headers
+    
+    try {
+  
+      const userExists = await db.collection("participants").findOne({ name: user })
+  
+      if (!userExists) return res.sendStatus(404)
+  
+      await db.collection("participants").updateOne({ name: user }, 
+        {
+            $set: {
+                lastStatus: Date.now()
+            }
+        })
+       
+      res.sendStatus(200)
   
     } catch (err) {
       console.log(err)
