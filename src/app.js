@@ -30,6 +30,8 @@ setInterval(async () => {
         const inactives = participants.filter((participant) => Date.now() - participant.lastStatus > 10000)
         inactives.forEach(async element => {
             await db.collection("participants").deleteOne({ name : element.name })
+            await db.collection("messages").insertOne(
+                {from: element.name, to: 'Todos', text: 'sai da sala...', type: 'status', time: dayjs().format('HH:mm:ss')})
         });
         
     } catch (error) {
