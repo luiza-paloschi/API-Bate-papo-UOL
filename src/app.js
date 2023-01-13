@@ -24,6 +24,19 @@ const server = express()
 server.use(express.json())
 server.use(cors())
 
+setInterval(async () => {
+    try {
+        const participants = await db.collection("participants").find({}).toArray()
+        const inactives = participants.filter((participant) => Date.now() - participant.lastStatus > 10000)
+        inactives.forEach(async element => {
+            await db.collection("participants").deleteOne({ name : element.name })
+        });
+        
+    } catch (error) {
+        console.log(error)
+        res.status(500).send("Deu algo errado no servidor")
+    }
+},15000)
 
 
 server.post("/participants", async (req, res) => {
