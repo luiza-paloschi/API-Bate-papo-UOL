@@ -116,11 +116,12 @@ server.post("/messages", async (req, res) => {
 
 server.get("/messages", async (req, res) => {
     const limit = parseInt(req.query.limit);
-    if (isNaN(limit) || (!isNaN(limit) && limit <= 0)){
-      return res.sendStatus(422)
-    }
-
     const {user} = req.headers
+    if (limit){
+      if (isNaN(limit) || (!isNaN(limit) && limit <= 0)){
+        return res.sendStatus(422)
+      }
+    }
 
     try {
         const messages = await db.collection("messages").find().toArray()
