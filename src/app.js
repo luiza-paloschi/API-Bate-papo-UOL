@@ -115,10 +115,12 @@ server.post("/messages", async (req, res) => {
 })
 
 server.get("/messages", async (req, res) => {
-    const limit = Number(req.query.limit);
+    let limit = req.query.limit;
+    console.log(limit)
     const {user} = req.headers
-    if (limit){
-      if (typeof limit === string || isNaN(limit) || (!isNaN(limit) && limit <= 0)){
+    if (limit !== undefined){
+      limit = Number(limit)
+      if (typeof limit === "string" || isNaN(limit) || (!isNaN(limit) && limit <= 0)){
         return res.sendStatus(422)
       }
     }
