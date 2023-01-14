@@ -3,6 +3,7 @@ import cors from "cors"
 import { MongoClient } from 'mongodb'
 import dotenv from 'dotenv'
 import dayjs from 'dayjs'
+import joi from 'joi'
 
 dotenv.config()
 // db.participants.deleteMany({})
@@ -43,7 +44,16 @@ setInterval(async () => {
 
 server.post("/participants", async (req, res) => {
     const user = req.body
-    console.log(user)
+    
+    const userSchema = joi.object({
+      name: joi.string().required()
+    });
+    const validation = userSchema.validate(user, { abortEarly: false })
+    if (validation.error) {
+      const errors = validation.error.details.map((detail) => detail.message);
+      return res.status(422).send(errors);
+    }
+
     try {
   
       const userExists = await db.collection("participants").findOne({ name: user.name })
@@ -75,6 +85,17 @@ server.get("/participants", async (_, res) => {
 server.post("/messages", async (req, res) => {
     const { to, text, type } = req.body
     const {user} = req.headers
+    
+    const messageSchema = joi.object({
+      to: joi.string().required(),
+      text: joi.string().required(),
+      type: joi.string().valid('message','private_message').required()
+    });
+    const validation = messageSchema.validate({ to, text, type }, { abortEarly: false })
+    if (validation.error) {
+      const errors = validation.error.details.map((detail) => detail.message);
+      return res.status(422).send(errors);
+    }
 
     try {
   
@@ -95,14 +116,18 @@ server.post("/messages", async (req, res) => {
 
 server.get("/messages", async (req, res) => {
     const limit = parseInt(req.query.limit);
+    if (isNaN(limit) || (!isNaN(limit) && limit <= 0)){
+      return res.sendStatus(422)
+    }
+
     const {user} = req.headers
 
     try {
         const messages = await db.collection("messages").find().toArray()
         const filtered = messages.filter((message) => message.type === "message" || message.type === "status" ||
         (message.type === "private_message" && (message.from === user || message.to === user)))
-        if (!limit) return res.send(filtered)
-        return res.send(filtered.slice(-limit))
+        if (!limit) return res.send([...filtered].reverse())
+        return res.send([...filtered].slice(-limit).reverse())
     } catch (error) {
         console.log(error)
         res.status(500).send("Deu algo errado no servidor")
